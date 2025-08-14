@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import XLogo from '../assets/X_twitter.svg';
 
-const Signup = () => {
+const Signup = ({ onLogin }) => {
   const [formData, setFormData] = useState({
     username: '',
     fullName: '',
@@ -11,13 +11,16 @@ const Signup = () => {
     password: '',
     confirmPassword: ''
   });
+  
   useEffect(() => {
-        document.title = 'Sign Up';
-      }, []);
+    document.title = 'Sign Up';
+  }, []);
   
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const navigate = useNavigate();
 
@@ -90,10 +93,33 @@ const Signup = () => {
       });
 
       if (response.data.success) {
-        setMessage('Account created successfully! Redirecting to login...');
-        setTimeout(() => {
-          navigate('/login');
-        }, 2000);
+        setMessage('Account created successfully! Logging you in...');
+        
+        // Automatically log in the user after successful signup
+        try {
+          const loginResponse = await axios.post('/api/auth/login', {
+            username: formData.username,
+            password: formData.password
+          }, {
+            withCredentials: true
+          });
+
+          if (loginResponse.data.success) {
+            // Update user state in App.jsx
+            if (onLogin && loginResponse.data.user) {
+              onLogin(loginResponse.data.user);
+            }
+            setMessage('Welcome! Redirecting to dashboard...');
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 1500);
+          }
+        } catch (loginError) {
+          setMessage('Account created! Please log in manually.');
+          setTimeout(() => {
+            navigate('/login');
+          }, 2000);
+        }
       }
     } catch (error) {
       if (error.response) {
@@ -107,111 +133,261 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-x-black p-5 box-border">
-      <div className="bg-x-dark-gray rounded-2xl shadow-2xl shadow-white/5 p-10 w-full max-w-md animate-[slideUp_0.5s_ease-out] flex flex-col items-center justify-center">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-x-black via-gray-900 to-x-black p-5 box-border relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-x-blue/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-500/5 to-x-blue/5 rounded-full blur-3xl animate-spin-slow"></div>
+      </div>
+
+      <div className="bg-x-dark-gray/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-black/50 border border-white/10 p-10 w-full max-w-lg animate-[slideUp_0.6s_ease-out] flex flex-col items-center justify-center relative z-10">
         <div className="text-center mb-8 w-full">
-          <div className="flex items-center justify-center mb-4">
-            <img src={XLogo} alt="X Logo" className="w-12 h-12 mr-3" />
-            <h1 className="text-white text-3xl font-bold">Create Account</h1>
+          <div className="flex items-center justify-center mb-6">
+            <div className="relative">
+              <img src={XLogo} alt="X Logo" className="w-16 h-16 mr-4 drop-shadow-lg" />
+              <div className="absolute inset-0 w-16 h-16 bg-purple-500/20 rounded-full blur-xl animate-pulse"></div>
+            </div>
+            <h1 className="text-white text-4xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">Join us</h1>
           </div>
-          <p className="text-gray-400 text-base">Join our community today!</p>
+          <p className="text-gray-400 text-lg font-medium">Create your account today</p>
         </div>
 
         {message && (
-          <div className={`p-3 rounded-lg mb-5 font-medium text-center w-full ${
-            message.includes('successfully') 
-              ? 'bg-green-900/20 text-green-400 border border-green-600' 
-              : 'bg-red-900/20 text-red-400 border border-red-600'
-          }`}>
+          <div className={`p-4 rounded-2xl mb-6 font-medium text-center w-full backdrop-blur-sm border ${
+            message.includes('successfully') || message.includes('Welcome') 
+              ? 'bg-green-500/10 text-green-400 border-green-500/30 shadow-lg shadow-green-500/20' 
+              : 'bg-red-500/10 text-red-400 border-red-500/30 shadow-lg shadow-red-500/20'
+          } animate-[fadeIn_0.3s_ease-out]`}>
             {message}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full items-center">
-          <div className="flex flex-col gap-2 w-full items-center">
-            <label htmlFor="username" className="font-medium text-sm text-gray-300 text-center w-full">Username</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              className={`input-field ${errors.username ? 'border-red-600 bg-red-900/20' : ''}`}
-              placeholder="Enter username"
-            />
-            {errors.username && <span className="text-red-400 text-sm mt-1">{errors.username}</span>}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex flex-col gap-3">
+              <label htmlFor="fullName" className="font-semibold text-sm text-gray-300 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+                Full Name
+              </label>
+              <input
+                type="text"
+                id="fullName"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                className={`w-full px-4 py-3 bg-x-light-gray/50 border-2 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 ${
+                  errors.fullName 
+                    ? 'border-red-500/50 bg-red-500/10 focus:ring-red-500/20' 
+                    : 'border-gray-600/50 focus:border-purple-500/50 focus:ring-purple-500/20 hover:border-gray-500/50'
+                }`}
+                placeholder="Enter your full name"
+              />
+              {errors.fullName && (
+                <p className="text-red-400 text-sm font-medium flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.fullName}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label htmlFor="username" className="font-semibold text-sm text-gray-300 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+                Username
+              </label>
+              <input
+                type="text"
+                id="username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                className={`w-full px-4 py-3 bg-x-light-gray/50 border-2 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 ${
+                  errors.username 
+                    ? 'border-red-500/50 bg-red-500/10 focus:ring-red-500/20' 
+                    : 'border-gray-600/50 focus:border-purple-500/50 focus:ring-purple-500/20 hover:border-gray-500/50'
+                }`}
+                placeholder="Choose a username"
+              />
+              {errors.username && (
+                <p className="text-red-400 text-sm font-medium flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.username}
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="flex flex-col gap-2 w-full items-center">
-            <label htmlFor="fullName" className="font-medium text-sm text-gray-300 text-center w-full">Full Name</label>
-            <input
-              type="text"
-              id="fullName"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              className={`input-field ${errors.fullName ? 'border-red-600 bg-red-900/20' : ''}`}
-              placeholder="Enter your full name"
-            />
-            {errors.fullName && <span className="text-red-400 text-sm mt-1">{errors.fullName}</span>}
-          </div>
-
-          <div className="flex flex-col gap-2 w-full items-center">
-            <label htmlFor="email" className="font-medium text-sm text-gray-300 text-center w-full">Email</label>
+          <div className="flex flex-col gap-3">
+            <label htmlFor="email" className="font-semibold text-sm text-gray-300 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+              </svg>
+              Email
+            </label>
             <input
               type="email"
               id="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className={`input-field ${errors.email ? 'border-red-600 bg-red-900/20' : ''}`}
+              className={`w-full px-4 py-3 bg-x-light-gray/50 border-2 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 ${
+                errors.email 
+                  ? 'border-red-500/50 bg-red-500/10 focus:ring-red-500/20' 
+                  : 'border-gray-600/50 focus:border-purple-500/50 focus:ring-purple-500/20 hover:border-gray-500/50'
+              }`}
               placeholder="Enter your email"
             />
-            {errors.email && <span className="text-red-400 text-sm mt-1">{errors.email}</span>}
-          </div>
-
-          <div className="flex flex-col gap-2 w-full items-center">
-            <label htmlFor="password" className="font-medium text-sm text-gray-300 text-center w-full">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className={`input-field ${errors.password ? 'border-red-600 bg-red-900/20' : ''}`}
-              placeholder="Enter password"
-            />
-            {errors.password && <span className="text-red-400 text-sm mt-1">{errors.password}</span>}
-          </div>
-
-          <div className="flex flex-col gap-2 w-full items-center">
-            <label htmlFor="confirmPassword" className="font-medium text-sm text-gray-300 text-center w-full">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className={`input-field ${errors.confirmPassword ? 'border-red-600 bg-red-900/20' : ''}`}
-              placeholder="Confirm password"
-            />
-            {errors.confirmPassword && <span className="text-red-400 text-sm mt-1">{errors.confirmPassword}</span>}
-          </div>
-
-          <button 
-            type="submit" 
-            className="bg-white text-black border-none rounded-lg py-4 text-base font-semibold cursor-pointer transition-all duration-300 w-full max-w-xs mx-auto hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed relative" 
-            disabled={loading}
-          >
-            {loading ? 'Creating Account...' : 'Create Account'}
-            {loading && (
-              <div className="absolute w-4 h-4 top-1/2 left-1/2 -ml-2 -mt-2 border-2 border-transparent border-t-black rounded-full animate-spin"></div>
+            {errors.email && (
+              <p className="text-red-400 text-sm font-medium flex items-center gap-1">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                {errors.email}
+              </p>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="flex flex-col gap-3">
+              <label htmlFor="password" className="font-semibold text-sm text-gray-300 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 bg-x-light-gray/50 border-2 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 pr-12 ${
+                    errors.password 
+                      ? 'border-red-500/50 bg-red-500/10 focus:ring-red-500/20' 
+                      : 'border-gray-600/50 focus:border-purple-500/50 focus:ring-purple-500/20 hover:border-gray-500/50'
+                  }`}
+                  placeholder="Create a password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-white transition-colors duration-200"
+                >
+                  {showPassword ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                      <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-red-400 text-sm font-medium flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.password}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label htmlFor="confirmPassword" className="font-semibold text-sm text-gray-300 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                Confirm Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 bg-x-light-gray/50 border-2 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 transition-all duration-300 pr-12 ${
+                    errors.confirmPassword 
+                      ? 'border-red-500/50 bg-red-500/10 focus:ring-red-500/20' 
+                      : 'border-gray-600/50 focus:border-purple-500/50 focus:ring-purple-500/20 hover:border-gray-500/50'
+                  }`}
+                  placeholder="Confirm your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-white transition-colors duration-200"
+                >
+                  {showConfirmPassword ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+                      <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-red-400 text-sm font-medium flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.confirmPassword}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-purple-600 to-x-blue text-white font-bold py-4 px-6 rounded-xl hover:from-x-blue hover:to-purple-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30 hover:scale-[1.02] relative overflow-hidden group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+            <span className="relative flex items-center justify-center gap-2">
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Create Account
+                </>
+              )}
+            </span>
           </button>
         </form>
 
-        <div className="text-center mt-5 pt-4 border-t border-gray-700 w-full">
-          <p className="text-gray-500">Already have an account? <a href="/login" className="text-gray-300 no-underline font-semibold hover:underline">Login here</a></p>
+        <div className="mt-8 text-center">
+          <p className="text-gray-400 text-sm">
+            Already have an account?{' '}
+            <a href="/login" className="text-purple-400 hover:text-purple-300 font-semibold transition-colors duration-200">
+              Sign in
+            </a>
+          </p>
         </div>
       </div>
     </div>
