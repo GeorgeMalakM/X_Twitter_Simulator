@@ -1,11 +1,17 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import XLogo from '../assets/X_twitter.svg';
 
 const Navbar = ({ user, onLogout, unreadNotifications = 0 }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searching, setSearching] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const searchRef = useRef(null);
 
   const handleLogout = async () => {
     try {
@@ -17,6 +23,20 @@ const Navbar = ({ user, onLogout, unreadNotifications = 0 }) => {
       console.error('Error logging out:', error);
     }
   };
+
+  // Click outside handler for search results
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearchResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Public navbar (no user)
   if (!user) {
@@ -52,6 +72,49 @@ const Navbar = ({ user, onLogout, unreadNotifications = 0 }) => {
 
   const activeTab = getActiveTab();
 
+  // Search functionality
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const response = await axios.get(`/api/user/search?q=${encodeURIComponent(query)}`, {
+        withCredentials: true
+      });
+      
+      if (response.data.success) {
+        // Filter out the current user from search results
+        const filteredResults = response.data.users.filter(u => u._id !== user._id);
+        setSearchResults(filteredResults);
+        setShowSearchResults(true);
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleUserClick = (userId, username) => {
+    setShowSearchResults(false);
+    setSearchQuery('');
+    // Navigate to user profile
+    navigate(`/user/${username}`);
+  };
+
+  const handleSearchFocus = () => {
+    if (searchQuery.trim().length >= 2 && searchResults.length > 0) {
+      setShowSearchResults(true);
+    }
+  };
+
   return (
     <div className="fixed top-0 left-0 w-full h-16 bg-black/80 backdrop-blur-xl border-b border-white/10 z-[9999] shadow-lg shadow-black/20">
       <div className="max-w-7xl mx-auto h-full flex items-center justify-between px-6">
@@ -61,6 +124,75 @@ const Navbar = ({ user, onLogout, unreadNotifications = 0 }) => {
             <img src={XLogo} alt="X Logo" className="w-10 h-10 drop-shadow-lg transition-transform duration-300 group-hover:scale-110" />
             <div className="absolute inset-0 w-10 h-10 bg-x-blue/20 rounded-full blur-xl animate-pulse"></div>
           </Link>
+        </div>
+
+        {/* Search Bar */}
+        <div className="flex-1 max-w-md mx-8 relative" ref={searchRef}>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              onFocus={handleSearchFocus}
+              className="w-full px-4 py-2 pl-10 bg-x-light-gray/50 border border-white/20 rounded-full text-white placeholder-gray-400 focus:outline-none focus:border-x-blue/50 focus:ring-2 focus:ring-x-blue/20 transition-all duration-300"
+            />
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+              {searching ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-x-blue"></div>
+              ) : (
+                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          </div>
+
+          {/* Search Results Dropdown */}
+          {showSearchResults && searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-[10000] max-h-80 overflow-y-auto">
+              <div className="p-2">
+                {searchResults.map((result) => (
+                  <div
+                    key={result._id}
+                    onClick={() => handleUserClick(result._id, result.username)}
+                    className="flex items-center gap-3 p-3 hover:bg-white/10 rounded-xl cursor-pointer transition-all duration-200 group"
+                  >
+                    <img
+                      src={result.profileImg || 'https://via.placeholder.com/40'}
+                      alt={result.fullName}
+                      className="w-10 h-10 rounded-full object-cover border-2 border-white/20 group-hover:border-x-blue/50 transition-colors duration-200"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold text-white group-hover:text-x-blue transition-colors duration-200">
+                        {result.fullName}
+                      </div>
+                      <div className="text-sm text-gray-400">@{result.username}</div>
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <svg className="w-5 h-5 text-x-blue" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Results */}
+          {showSearchResults && searchQuery.trim().length >= 2 && searchResults.length === 0 && !searching && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-black/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden z-[10000]">
+              <div className="p-4 text-center">
+                <div className="w-12 h-12 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <p className="text-gray-400 text-sm">No users found</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Navigation Links */}

@@ -5,6 +5,7 @@ import Signup from './components/Signup';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Profile from './components/Profile';
+import UserProfile from './components/UserProfile';
 import Notifications from './components/Notifications';
 import Welcome from './components/Welcome';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -95,6 +96,7 @@ function App() {
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
           <Route path="/dashboard" element={<ProtectedRoute user={user}><Dashboard /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute user={user}><Profile /></ProtectedRoute>} />
+          <Route path="/user/:username" element={<ProtectedRoute user={user}><UserProfile /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute user={user}><Notifications /></ProtectedRoute>} />
         </Routes>
       </div>
