@@ -24,7 +24,7 @@ const Welcome = () => {
               <div className="absolute inset-0 w-20 h-20 bg-x-blue/20 rounded-full blur-xl animate-pulse"></div>
             </div>
             <h1 className="text-6xl font-bold text-white bg-gradient-to-r from-x-blue to-purple-600 bg-clip-text text-transparent">
-              Welcome to X-Twitter
+              Welcome to X Twitter
             </h1>
           </div>
           <p className="text-2xl text-x-text-gray mb-12 leading-relaxed">
